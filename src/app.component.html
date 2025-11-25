@@ -1,0 +1,151 @@
+
+@if (!isAuthenticated()) {
+  <app-login />
+} @else {
+  <div class="min-h-screen bg-primary-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans transition-colors duration-300">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
+
+      <!-- Header -->
+      <header class="flex flex-col sm:flex-row justify-between items-center mb-8">
+        <div class="flex items-center space-x-3 mb-4 sm:mb-0">
+          <i class="fas fa-check-double text-4xl text-primary-600 dark:text-primary-400"></i>
+          <h1 class="text-4xl font-bold text-primary-800 dark:text-primary-200">KWtask</h1>
+        </div>
+        <div class="flex items-center space-x-2">
+          <input type="file" id="import-file-input" class="hidden" (change)="onFileSelected($event)" accept=".json">
+          <button (click)="triggerImport()" title="Import from JSON" class="control-btn">
+            <i class="fas fa-upload"></i>
+          </button>
+          <button (click)="todoService.exportTasksToJson()" title="Export to JSON" class="control-btn">
+            <i class="fas fa-download"></i>
+          </button>
+          <button (click)="themeService.toggleTheme()" [title]="'Switch to ' + (currentTheme() === 'light' ? 'Dark' : 'Light') + ' Mode'" class="control-btn">
+            @if(currentTheme() === 'light') {
+              <i class="fas fa-moon"></i>
+            } @else {
+              <i class="fas fa-sun"></i>
+            }
+          </button>
+          <button (click)="authService.logout()" title="Logout" class="control-btn bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Testing Instructions -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md mb-6 overflow-hidden">
+        <button (click)="showTestInstructions.set(!showTestInstructions())" class="w-full text-left p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none">
+          <h2 class="font-semibold text-lg text-primary-700 dark:text-primary-300">
+            <i class="fas fa-vial mr-2"></i> วิธีการทดสอบแอปพลิเคชัน (How to Test)
+          </h2>
+          <i class="fas transition-transform duration-300" [class.fa-chevron-down]="!showTestInstructions()" [class.fa-chevron-up]="showTestInstructions()"></i>
+        </button>
+        @if(showTestInstructions()) {
+          <div class="p-5 border-t border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm space-y-3">
+            <p><strong>1. การล็อกอิน:</strong> ใช้รหัสผ่าน <code>km@2025SD1</code> เพื่อเข้าสู่ระบบ</p>
+            <p><strong>2. สลับโหมด (Dark/Light):</strong> คลิกปุ่มรูปพระจันทร์ <i class="fas fa-moon"></i> หรือพระอาทิตย์ <i class="fas fa-sun"></i> เพื่อสลับธีม</p>
+            <p><strong>3. การเพิ่ม Task:</strong> พิมพ์ชื่องานในช่อง "What's next?" (สามารถกำหนดวันและเวลาได้) แล้วกดปุ่ม "Add Task" หรือ Enter</p>
+            <p><strong>4. การทำ Task ให้เสร็จ:</strong> คลิกที่ช่องสี่เหลี่ยมหน้าชื่องาน หรือคลิกที่ชื่องาน</p>
+            <p><strong>5. แก้ไข Task:</strong> นำเมาส์ไปวางบน Task แล้วคลิกไอคอนรูปดินสอ <i class="fas fa-pencil-alt"></i> เพื่อเข้าโหมดแก้ไข</p>
+            <p><strong>6. ลบ Task:</strong> นำเมาส์ไปวางบน Task แล้วคลิกไอคอนรูปถังขยะ <i class="fas fa-trash"></i></p>
+            <p><strong>7. จัดลำดับ Task:</strong> คลิกค้างที่ Task แล้วลากเพื่อย้ายตำแหน่ง</p>
+            <p><strong>8. Export ข้อมูล:</strong> คลิกปุ่ม <i class="fas fa-download"></i> เพื่อบันทึกรายการ Task ทั้งหมดเป็นไฟล์ <code>kwtasks.json</code></p>
+            <p><strong>9. Import ข้อมูล:</strong> คลิกปุ่ม <i class="fas fa-upload"></i> แล้วเลือกไฟล์ <code>.json</code> ที่มีรูปแบบข้อมูลถูกต้องเพื่อนำเข้า Task</p>
+          </div>
+        }
+      </div>
+
+      <!-- Main Content Card -->
+      <main class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6">
+        <!-- Add Task Form -->
+        <form (submit)="$event.preventDefault(); addTodo()" class="flex flex-col sm:flex-row items-center gap-3 mb-6 p-4 bg-primary-50 dark:bg-gray-700/50 rounded-lg">
+          <input
+            type="text"
+            placeholder="What's next?"
+            [value]="newTodoTitle()"
+            (input)="newTodoTitle.set($event.target.value)"
+            class="flex-grow w-full bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+          />
+          <input
+            type="datetime-local"
+            [value]="newTodoDueDate()"
+            (input)="newTodoDueDate.set($event.target.value)"
+            class="w-full sm:w-auto bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+          />
+          <button type="submit" [disabled]="!newTodoTitle().trim()" class="w-full sm:w-auto bg-primary-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            Add Task
+          </button>
+        </form>
+
+        <!-- Task List -->
+        <div cdkDropList (cdkDropListDropped)="drop($event)" class="space-y-3 min-h-[100px]">
+          @for (todo of filteredTodos(); track todo.id) {
+            <div cdkDrag [cdkDragData]="todo" class="task-item group" [class.completed]="todo.completed">
+              @if (editingTodoId() === todo.id) {
+                <!-- Edit Mode -->
+                <form (submit)="$event.preventDefault(); saveEdit()" class="flex-grow flex flex-col sm:flex-row items-center gap-3">
+                  <input
+                    type="text"
+                    [value]="editingTodoTitle()"
+                    (input)="editingTodoTitle.set($event.target.value)"
+                    class="flex-grow w-full bg-white dark:bg-gray-700 border-2 border-primary-500 rounded-md px-3 py-1.5 focus:outline-none"
+                  />
+                  <input
+                    type="datetime-local"
+                    [value]="formatDateForInput(editingTodoDueDate())"
+                    (input)="editingTodoDueDate.set($event.target.value)"
+                    class="w-full sm:w-auto bg-white dark:bg-gray-700 border-2 border-primary-500 rounded-md px-3 py-1.5 focus:outline-none"
+                  />
+                  <div class="flex space-x-2">
+                    <button type="submit" class="task-action-btn text-green-500 hover:text-green-600"><i class="fas fa-check"></i></button>
+                    <button type="button" (click)="cancelEdit()" class="task-action-btn text-gray-500 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                  </div>
+                </form>
+              } @else {
+                <!-- View Mode -->
+                <div class="flex items-center w-full">
+                  <input type="checkbox" [checked]="todo.completed" (change)="toggleTodo(todo.id)" class="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer mr-4">
+                  <div class="flex-grow cursor-pointer" (click)="toggleTodo(todo.id)">
+                    <p class="font-medium" [class.line-through]="todo.completed">{{ todo.title }}</p>
+                    @if(todo.dueDate) {
+                      <p class="text-xs text-gray-500 dark:text-gray-400" [class.line-through]="todo.completed">
+                        Due: {{ todo.dueDate | date:'short' }}
+                      </p>
+                    }
+                  </div>
+                  <div class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button (click)="enterEditMode(todo)" class="task-action-btn text-blue-500 hover:text-blue-600"><i class="fas fa-pencil-alt"></i></button>
+                    <button (click)="deleteTodo(todo.id)" class="task-action-btn text-red-500 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                  </div>
+                </div>
+              }
+            </div>
+          } @empty {
+            <div class="text-center py-10 px-4">
+              <i class="fas fa-clipboard-check text-5xl text-gray-300 dark:text-gray-600"></i>
+              <p class="mt-4 text-gray-500 dark:text-gray-400">All tasks completed! Or maybe add a new one?</p>
+            </div>
+          }
+        </div>
+
+      </main>
+
+    </div>
+  </div>
+}
+
+<!-- Base Styles (can be component-specific) -->
+<style>
+  .control-btn {
+    @apply h-10 w-10 flex items-center justify-center bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition;
+  }
+  .task-item {
+    @apply flex items-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg shadow-sm border border-transparent hover:shadow-md hover:border-primary-200 dark:hover:border-primary-700 transition duration-200;
+  }
+  .task-item.completed {
+    @apply bg-green-50/50 dark:bg-green-900/20 text-gray-500 dark:text-gray-400;
+  }
+  .task-action-btn {
+    @apply h-8 w-8 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors;
+  }
+</style>

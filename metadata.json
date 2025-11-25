@@ -1,0 +1,5 @@
+{
+  "name": "KWtask",
+  "description": "A modern, aesthetically pleasing To-Do list application with a green theme, dark/light mode support, and data import/export functionality.",
+  "requestFramePermissions": []
+}
